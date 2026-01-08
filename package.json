@@ -1,0 +1,27 @@
+{
+  "name": "eva-calendar",
+  "version": "1.0.0",
+  "description": "Eva's Weekly Calendar - A drag-and-drop weekly planner with automated email scheduling",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "calendar",
+    "weekly-planner",
+    "scheduler"
+  ],
+  "author": "Christian Curran",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.8",
+    "puppeteer": "^21.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
