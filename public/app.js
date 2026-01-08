@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWeekTabs();
     renderCalendar();
     renderMobileCalendar();
-    renderCustomPeopleList();
     setupEventListeners();
     setupMobileNavigation();
 });
@@ -229,6 +228,9 @@ function createPersonChip(person, day, slotId, index) {
 
 // Create person select dropdown
 function createPersonSelect(day, slotId) {
+    const container = document.createElement('div');
+    container.className = 'select-container';
+    
     const select = document.createElement('select');
     select.className = 'person-select';
     
@@ -246,15 +248,78 @@ function createPersonSelect(day, slotId) {
         select.appendChild(option);
     });
     
+    // Add "Custom..." option
+    const customOption = document.createElement('option');
+    customOption.value = '__custom__';
+    customOption.textContent = '✏️ Custom...';
+    select.appendChild(customOption);
+    
     // Handle selection
     select.addEventListener('change', (e) => {
-        if (e.target.value) {
+        if (e.target.value === '__custom__') {
+            // Show custom input
+            showCustomInput(container, day, slotId);
+            e.target.value = '';
+        } else if (e.target.value) {
             addPersonToSlot(day, slotId, e.target.value);
-            e.target.value = ''; // Reset dropdown
+            e.target.value = '';
         }
     });
     
-    return select;
+    container.appendChild(select);
+    return container;
+}
+
+// Show custom input field
+function showCustomInput(container, day, slotId) {
+    // Remove existing custom input if any
+    const existing = container.querySelector('.custom-input-container');
+    if (existing) existing.remove();
+    
+    const inputContainer = document.createElement('div');
+    inputContainer.className = 'custom-input-container';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'custom-slot-input';
+    input.placeholder = 'Enter name...';
+    
+    const addBtn = document.createElement('button');
+    addBtn.className = 'custom-add-btn';
+    addBtn.textContent = 'Add';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'custom-cancel-btn';
+    cancelBtn.innerHTML = '✕';
+    
+    addBtn.addEventListener('click', () => {
+        const name = input.value.trim();
+        if (name) {
+            // Add to custom people list if not already there
+            if (!state.customPeople.includes(name) && !CONFIG.defaultPeople.includes(name)) {
+                state.customPeople.push(name);
+            }
+            addPersonToSlot(day, slotId, name);
+        }
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+        inputContainer.remove();
+    });
+    
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addBtn.click();
+        }
+    });
+    
+    inputContainer.appendChild(input);
+    inputContainer.appendChild(addBtn);
+    inputContainer.appendChild(cancelBtn);
+    container.appendChild(inputContainer);
+    
+    // Focus the input
+    setTimeout(() => input.focus(), 50);
 }
 
 // Check if person is a default one
@@ -312,28 +377,6 @@ function renderMobileCalendar() {
     });
 }
 
-// Render custom people list
-function renderCustomPeopleList() {
-    const list = document.getElementById('customPeopleList');
-    list.innerHTML = '';
-    
-    state.customPeople.forEach((person, index) => {
-        const chip = document.createElement('div');
-        chip.className = 'custom-chip';
-        chip.innerHTML = `
-            <span>${person}</span>
-            <button class="remove-custom" title="Remove">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        
-        chip.querySelector('.remove-custom').addEventListener('click', () => {
-            removeCustomPerson(index);
-        });
-        
-        list.appendChild(chip);
-    });
-}
 
 // Add person to slot
 function addPersonToSlot(day, slotId, person) {
@@ -369,29 +412,6 @@ function removePersonFromSlot(day, slotId, index) {
     }
 }
 
-// Add custom person
-function addCustomPerson() {
-    const input = document.getElementById('customInput');
-    const name = input.value.trim();
-    
-    if (name && !state.customPeople.includes(name) && !CONFIG.defaultPeople.includes(name)) {
-        state.customPeople.push(name);
-        saveState();
-        renderCustomPeopleList();
-        renderCalendar();
-        renderMobileCalendar();
-        input.value = '';
-    }
-}
-
-// Remove custom person
-function removeCustomPerson(index) {
-    state.customPeople.splice(index, 1);
-    saveState();
-    renderCustomPeopleList();
-    renderCalendar();
-    renderMobileCalendar();
-}
 
 // Repeat week to following weeks
 function repeatWeek() {
@@ -425,14 +445,6 @@ function setupEventListeners() {
     
     document.getElementById('scrollTabsRight').addEventListener('click', () => {
         document.getElementById('weekTabs').scrollBy({ left: 200, behavior: 'smooth' });
-    });
-    
-    // Custom person input
-    document.getElementById('addCustomBtn').addEventListener('click', addCustomPerson);
-    document.getElementById('customInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addCustomPerson();
-        }
     });
     
     // Repeat week button
