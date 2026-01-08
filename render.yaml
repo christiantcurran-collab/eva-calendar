@@ -9,8 +9,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: EMAIL_USER
-        sync: false
-      - key: EMAIL_PASS
+      - key: RESEND_API_KEY
         sync: false
 

@@ -9,68 +9,63 @@ A drag-and-drop weekly planner with automated email scheduling. Built with a lig
 - **People/Activities**: Mum, Dad, Megan, EDS, Lisa, Granny, plus custom entries
 - **Week Tabs**: Navigate between weeks (starts Monday 13th January 2025)
 - **Copy Weeks**: Apply one week's schedule to following weeks
-- **Email Integration**: Send calendar via email
+- **Email Integration**: Send calendar via email (using Resend)
 - **PDF Export**: Download/print calendar as PDF
 - **Mobile Optimized**: Responsive design with touch support
 - **Auto-Save**: All data persists in browser storage
 
 ## Automated Emails
 
-The server sends automatic emails:
+The server sends automatic emails to ccurran@gmail.com:
 - **Saturday 9:00 AM GMT**: Proposed plan for the upcoming week
-- **Sunday 12:00 PM GMT**: Final PDF of the week's plan
+- **Sunday 12:00 PM GMT**: Final plan for the week
 
 ## Deployment on Render
 
-### Quick Deploy
+### Step 1: Get a Free Resend API Key
 
-1. Push this repository to GitHub
-2. Go to [Render Dashboard](https://dashboard.render.com/)
-3. Click **New** → **Web Service**
-4. Connect your GitHub repository
-5. Render will auto-detect the `render.yaml` configuration
-6. Add environment variables:
-   - `EMAIL_USER`: Your Gmail address (ccurran@gmail.com)
-   - `EMAIL_PASS`: Your Gmail App Password (see below)
-7. Click **Deploy**
+1. Go to [Resend.com](https://resend.com) and sign up (free)
+2. Go to **API Keys** in the dashboard
+3. Click **Create API Key**
+4. Copy the key (starts with `re_`)
 
-### Gmail App Password Setup
+**Why Resend?**
+- ✅ **100 free emails/day** - more than enough for weekly emails
+- ✅ Uses **API keys** - no personal passwords needed
+- ✅ Emails come from Resend servers - not your personal account
+- ✅ Easy to revoke access if needed
+- ✅ Better email deliverability
 
-To send emails from Gmail, you need an App Password:
+### Step 2: Deploy on Render
 
-1. Go to [Google Account Security](https://myaccount.google.com/security)
-2. Enable **2-Step Verification** if not already enabled
-3. Go to [App Passwords](https://myaccount.google.com/apppasswords)
-4. Create a new App Password for "Mail" on "Other (Custom name)"
-5. Copy the 16-character password
-6. Use this as the `EMAIL_PASS` environment variable in Render
+1. Go to [Render Dashboard](https://dashboard.render.com/)
+2. Click **New** → **Web Service**
+3. Connect your GitHub repository: `christiantcurran-collab/eva-calendar`
+4. Render will auto-detect the configuration
+5. Add environment variable:
+   - **Key**: `RESEND_API_KEY`
+   - **Value**: Your Resend API key (from Step 1)
+6. Click **Deploy**
 
-### Alternative: EmailJS (No Backend Required)
+That's it! Your calendar will be live and sending automated emails.
 
-If you want to use the site without the backend email functionality:
+## Email Configuration
 
-1. Sign up at [EmailJS](https://www.emailjs.com/)
-2. Create a service connected to your email
-3. Create an email template with these variables:
-   - `to_email`
-   - `from_name`
-   - `subject`
-   - `message_html`
-   - `message`
-4. Update the config in `public/app.js`:
-   ```javascript
-   emailjs: {
-       serviceId: 'your_service_id',
-       templateId: 'your_template_id',
-       publicKey: 'your_public_key'
-   }
-   ```
+Emails are sent from: `Eva Calendar <onboarding@resend.dev>`
+
+To use your own domain for sending emails:
+1. Add a domain in Resend dashboard
+2. Verify DNS records
+3. Update `EMAIL_CONFIG.from` in `server.js`
 
 ## Local Development
 
 ```bash
 # Install dependencies
 npm install
+
+# Set your Resend API key
+export RESEND_API_KEY=re_your_key_here
 
 # Start the server
 npm start
@@ -96,11 +91,16 @@ eva-calendar/
 
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Backend**: Node.js, Express
-- **Email**: Nodemailer (backend) or EmailJS (frontend fallback)
+- **Email**: [Resend](https://resend.com) (free tier: 100 emails/day)
 - **Scheduling**: node-cron
-- **PDF Generation**: Puppeteer
+
+## Security
+
+- ✅ No personal passwords stored
+- ✅ API key can be revoked anytime from Resend dashboard
+- ✅ Environment variables keep secrets out of code
+- ✅ Resend handles email authentication (SPF, DKIM)
 
 ## License
 
 MIT
-

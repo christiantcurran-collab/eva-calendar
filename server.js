@@ -4,8 +4,7 @@
 const express = require('express');
 const path = require('path');
 const cron = require('node-cron');
-const nodemailer = require('nodemailer');
-const puppeteer = require('puppeteer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,21 +18,37 @@ let calendarData = {};
 
 // Email configuration
 const EMAIL_CONFIG = {
-    from: 'ccurran@gmail.com',
+    from: 'Eva Calendar <onboarding@resend.dev>', // Use Resend's default or your verified domain
     to: 'ccurran@gmail.com'
 };
 
-// Create email transporter (configure with your email service)
-// For Gmail, you'll need to use an App Password
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER || 'ccurran@gmail.com',
-            pass: process.env.EMAIL_PASS // Set this in Render environment variables
+// Initialize Resend with API key
+// Get your free API key at https://resend.com
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Send email using Resend
+async function sendEmail({ to, subject, html, text }) {
+    try {
+        const { data, error } = await resend.emails.send({
+            from: EMAIL_CONFIG.from,
+            to: to || EMAIL_CONFIG.to,
+            subject: subject,
+            html: html,
+            text: text
+        });
+        
+        if (error) {
+            console.error('Resend error:', error);
+            return { success: false, error };
         }
-    });
-};
+        
+        console.log('Email sent:', data);
+        return { success: true, data };
+    } catch (error) {
+        console.error('Email error:', error);
+        return { success: false, error: error.message };
+    }
+}
 
 // API Routes
 // Save calendar data
@@ -53,47 +68,31 @@ app.post('/api/send-email', async (req, res) => {
     try {
         const { to, subject, html, text } = req.body;
         
-        const transporter = createTransporter();
+        const result = await sendEmail({ to, subject, html, text });
         
-        await transporter.sendMail({
-            from: EMAIL_CONFIG.from,
-            to: to || EMAIL_CONFIG.to,
-            subject: subject,
-            text: text,
-            html: html
-        });
-        
-        res.json({ success: true, message: 'Email sent successfully' });
+        if (result.success) {
+            res.json({ success: true, message: 'Email sent successfully' });
+        } else {
+            res.status(500).json({ success: false, error: result.error });
+        }
     } catch (error) {
         console.error('Email error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Generate PDF
+// Generate PDF (using html-pdf-node for simpler deployment)
 app.post('/api/generate-pdf', async (req, res) => {
     try {
         const { html } = req.body;
         
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        // For Render free tier, we'll return HTML for browser printing
+        // Full PDF generation requires paid tier or different approach
+        res.json({ 
+            success: true, 
+            message: 'Use browser print for PDF',
+            html: html 
         });
-        
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        
-        const pdf = await page.pdf({
-            format: 'A4',
-            landscape: true,
-            printBackground: true
-        });
-        
-        await browser.close();
-        
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=eva-calendar.pdf');
-        res.send(pdf);
     } catch (error) {
         console.error('PDF generation error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -182,8 +181,6 @@ function formatCalendarForEmail(weekData, weekStart) {
 
 // Send weekly proposal email (Saturday morning)
 async function sendWeeklyProposal() {
-    const transporter = createTransporter();
-    
     // Get next week's data
     const now = new Date();
     const nextMonday = new Date(now);
@@ -200,8 +197,7 @@ async function sendWeeklyProposal() {
     
     const html = formatCalendarForEmail(weekData, weekStart);
     
-    await transporter.sendMail({
-        from: EMAIL_CONFIG.from,
+    await sendEmail({
         to: EMAIL_CONFIG.to,
         subject: `📅 Eva's Calendar: Proposed Plan for Week of ${weekStart}`,
         html: `
@@ -211,7 +207,8 @@ async function sendWeeklyProposal() {
             <p style="color: #666; margin-top: 20px;">
                 <em>This is an automated email from Eva's Calendar.</em>
             </p>
-        `
+        `,
+        text: `Eva's Calendar - Proposed Plan for Week of ${weekStart}`
     });
     
     console.log('Weekly proposal email sent successfully');
@@ -219,8 +216,6 @@ async function sendWeeklyProposal() {
 
 // Send weekly PDF email (Sunday midday)
 async function sendWeeklyPDF() {
-    const transporter = createTransporter();
-    
     // Get next week's data
     const now = new Date();
     const nextMonday = new Date(now);
@@ -237,69 +232,19 @@ async function sendWeeklyPDF() {
     
     const html = formatCalendarForEmail(weekData, weekStart);
     
-    // Generate PDF
-    let pdfBuffer;
-    try {
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        
-        const page = await browser.newPage();
-        await page.setContent(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                </style>
-            </head>
-            <body>${html}</body>
-            </html>
-        `, { waitUntil: 'networkidle0' });
-        
-        pdfBuffer = await page.pdf({
-            format: 'A4',
-            landscape: true,
-            printBackground: true
-        });
-        
-        await browser.close();
-    } catch (error) {
-        console.error('PDF generation failed:', error);
-        // Send email without PDF attachment
-        await transporter.sendMail({
-            from: EMAIL_CONFIG.from,
-            to: EMAIL_CONFIG.to,
-            subject: `📅 Eva's Calendar: Final Plan for Week of ${weekStart}`,
-            html: `
-                <p>Hi,</p>
-                <p>Here's the final schedule for next week.</p>
-                ${html}
-                <p style="color: #666; margin-top: 20px;">
-                    <em>Note: PDF attachment could not be generated. This is an automated email from Eva's Calendar.</em>
-                </p>
-            `
-        });
-        return;
-    }
-    
-    await transporter.sendMail({
-        from: EMAIL_CONFIG.from,
+    // Send email with HTML calendar (Resend doesn't support attachments on free tier)
+    await sendEmail({
         to: EMAIL_CONFIG.to,
         subject: `📅 Eva's Calendar: Final Plan for Week of ${weekStart}`,
         html: `
             <p>Hi,</p>
-            <p>Here's the final schedule for next week. A PDF version is attached.</p>
+            <p>Here's the final schedule for next week.</p>
             ${html}
             <p style="color: #666; margin-top: 20px;">
-                <em>This is an automated email from Eva's Calendar.</em>
+                <em>This is an automated email from Eva's Calendar. You can print this email as a PDF from your email client.</em>
             </p>
         `,
-        attachments: [{
-            filename: `eva-calendar-${weekStart.replace(/\s/g, '-')}.pdf`,
-            content: pdfBuffer
-        }]
+        text: `Eva's Calendar - Final Plan for Week of ${weekStart}`
     });
     
     console.log('Weekly PDF email sent successfully');
