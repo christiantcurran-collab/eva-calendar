@@ -154,10 +154,10 @@ cron.schedule('0 12 * * 0', async () => {
 function formatCalendarForEmail(weekData, weekStart) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const timeSlots = [
-        { id: 'morning', label: '6-9am' },
-        { id: 'midday', label: '9am-1pm' },
-        { id: 'afternoon', label: '1-5pm' },
-        { id: 'evening', label: '5-8pm' }
+        { id: 'early', label: 'Early' },
+        { id: 'morning', label: 'Morning' },
+        { id: 'afternoon', label: 'Afternoon' },
+        { id: 'evening', label: 'Evening' }
     ];
     
     let html = `

@@ -5,10 +5,10 @@
 const CONFIG = {
     startDate: new Date(2025, 0, 13), // Monday 13th Jan 2025
     timeSlots: [
-        { id: 'morning', label: '6-9am' },
-        { id: 'midday', label: '9am-1pm' },
-        { id: 'afternoon', label: '1-5pm' },
-        { id: 'evening', label: '5-8pm' }
+        { id: 'early', label: 'Early' },
+        { id: 'morning', label: 'Morning' },
+        { id: 'afternoon', label: 'Afternoon' },
+        { id: 'evening', label: 'Evening' }
     ],
     days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     defaultPeople: ['Mum', 'Dad', 'Megan', 'EDS', 'Lisa', 'Granny'],
