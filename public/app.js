@@ -24,8 +24,8 @@ let state = {
 };
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-    loadState();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadState();
     initializeWeeks();
     renderWeekTabs();
     renderCalendar();
@@ -34,36 +34,60 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMobileNavigation();
 });
 
-// Load state from localStorage
-function loadState() {
+// Load state from server (shared) or localStorage (backup)
+async function loadState() {
+    // Try to load from server first (shared data)
+    try {
+        const response = await fetch('/api/calendar');
+        if (response.ok) {
+            const serverData = await response.json();
+            if (serverData && serverData.weeks && Object.keys(serverData.weeks).length > 0) {
+                state = { ...state, ...serverData };
+                console.log('Loaded calendar data from server');
+                // Also save to localStorage as backup
+                localStorage.setItem('evaCalendarState', JSON.stringify(state));
+                return;
+            }
+        }
+    } catch (error) {
+        console.log('Server not available, using localStorage');
+    }
+    
+    // Fallback to localStorage
     const savedState = localStorage.getItem('evaCalendarState');
     if (savedState) {
         try {
             const parsed = JSON.parse(savedState);
             state = { ...state, ...parsed };
+            console.log('Loaded calendar data from localStorage');
         } catch (e) {
             console.error('Error loading state:', e);
         }
     }
 }
 
-// Save state to localStorage and sync with backend
+// Save state to server (shared) and localStorage (backup)
 function saveState() {
+    // Save to localStorage as backup
     localStorage.setItem('evaCalendarState', JSON.stringify(state));
+    
+    // Save to server for sharing with other users
     syncWithBackend();
 }
 
-// Sync calendar data with backend
+// Sync calendar data with backend (saves for all users)
 async function syncWithBackend() {
     try {
-        await fetch('/api/calendar', {
+        const response = await fetch('/api/calendar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(state)
         });
+        if (response.ok) {
+            console.log('Calendar saved to server');
+        }
     } catch (error) {
-        // Backend might not be available (e.g., running locally)
-        console.log('Backend sync skipped');
+        console.log('Backend sync skipped - running offline');
     }
 }
 
