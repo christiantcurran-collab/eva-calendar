@@ -246,8 +246,8 @@ body {
     margin-top: 0.15rem;
 }
 
-/* People Pool */
-.people-pool {
+/* Custom People Section */
+.custom-people-section {
     background: white;
     border-radius: 12px;
     padding: 1.25rem;
@@ -255,7 +255,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
-.people-pool h3 {
+.custom-people-section h3 {
     color: var(--primary-color);
     font-size: 1.1rem;
     margin-bottom: 1rem;
@@ -264,79 +264,60 @@ body {
     gap: 0.5rem;
 }
 
-.people-chips {
+.add-custom-form {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.add-custom-form input {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.add-custom-form input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.custom-people-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-.person-chip {
-    display: flex;
-    align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    border-radius: 25px;
-    cursor: grab;
-    font-weight: 600;
-    font-size: 0.95rem;
-    transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
-}
-
-.person-chip:active {
-    cursor: grabbing;
-    transform: scale(1.05);
-}
-
-.person-chip[data-person="Mum"] { background: var(--chip-mum); color: #943126; }
-.person-chip[data-person="Dad"] { background: var(--chip-dad); color: #1a5276; }
-.person-chip[data-person="Megan"] { background: var(--chip-megan); color: #1d6f42; }
-.person-chip[data-person="EDS"] { background: var(--chip-eds); color: #9c640c; }
-.person-chip[data-person="Lisa"] { background: var(--chip-lisa); color: #6c3483; }
-.person-chip[data-person="Granny"] { background: var(--chip-granny); color: #9a7d0a; }
-
-.person-chip.dragging {
-    opacity: 0.5;
 }
 
 .custom-chip {
-    background: var(--bg-light);
-    border: 2px dashed var(--border-dark);
-    padding: 0.4rem 0.5rem;
-}
-
-.custom-input {
-    border: none;
-    background: transparent;
-    width: 80px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    background: var(--chip-custom);
+    color: #196f3d;
     font-size: 0.9rem;
-    outline: none;
-    color: var(--text-dark);
+    font-weight: 500;
 }
 
-.custom-input::placeholder {
-    color: var(--text-light);
-}
-
-.add-custom-btn {
-    background: var(--primary-color);
+.custom-chip .remove-custom {
+    background: rgba(0, 0, 0, 0.15);
     border: none;
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
-    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 0.7rem;
+    color: inherit;
     transition: background 0.2s;
 }
 
-.add-custom-btn:hover {
-    background: var(--primary-dark);
+.custom-chip .remove-custom:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 
 /* Calendar Wrapper */
@@ -388,67 +369,78 @@ body {
     border: 1px solid var(--border-color);
     padding: 0.5rem;
     vertical-align: top;
-    min-height: 70px;
-    height: 80px;
+    min-height: 80px;
     background: var(--bg-white);
-    transition: all 0.2s;
 }
 
-.calendar-slot:hover {
-    background: var(--primary-pale);
-}
-
-.calendar-slot.drag-over {
-    background: #d4efdf;
-    border: 2px dashed var(--success-color);
-}
-
-.calendar-slot .slot-content {
+.slot-content {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    min-height: 50px;
+    flex-direction: column;
+    gap: 0.4rem;
 }
 
-.slot-chip {
+/* Person Select Dropdown */
+.person-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: white;
+    cursor: pointer;
+    color: var(--text-medium);
+}
+
+.person-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Selected Person Chip */
+.selected-person {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: space-between;
+    gap: 0.3rem;
     padding: 0.35rem 0.6rem;
     border-radius: 15px;
     font-size: 0.8rem;
     font-weight: 600;
-    cursor: grab;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.slot-chip .remove-chip {
-    background: rgba(0, 0, 0, 0.2);
+.selected-person .person-name {
+    flex: 1;
+}
+
+.selected-person .remove-person {
+    background: rgba(0, 0, 0, 0.15);
     border: none;
     border-radius: 50%;
     width: 18px;
     height: 18px;
     cursor: pointer;
-    color: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
-    margin-left: 0.2rem;
+    font-size: 0.65rem;
+    color: inherit;
     transition: background 0.2s;
+    flex-shrink: 0;
 }
 
-.slot-chip .remove-chip:hover {
-    background: rgba(0, 0, 0, 0.4);
+.selected-person .remove-person:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 
-.slot-chip[data-person="Mum"] { background: var(--chip-mum); color: #943126; }
-.slot-chip[data-person="Dad"] { background: var(--chip-dad); color: #1a5276; }
-.slot-chip[data-person="Megan"] { background: var(--chip-megan); color: #1d6f42; }
-.slot-chip[data-person="EDS"] { background: var(--chip-eds); color: #9c640c; }
-.slot-chip[data-person="Lisa"] { background: var(--chip-lisa); color: #6c3483; }
-.slot-chip[data-person="Granny"] { background: var(--chip-granny); color: #9a7d0a; }
-.slot-chip[data-person="custom"] { background: var(--chip-custom); color: #196f3d; }
+/* Person colors */
+.selected-person[data-person="Mum"] { background: var(--chip-mum); color: #943126; }
+.selected-person[data-person="Dad"] { background: var(--chip-dad); color: #1a5276; }
+.selected-person[data-person="Megan"] { background: var(--chip-megan); color: #1d6f42; }
+.selected-person[data-person="EDS"] { background: var(--chip-eds); color: #9c640c; }
+.selected-person[data-person="Lisa"] { background: var(--chip-lisa); color: #6c3483; }
+.selected-person[data-person="Granny"] { background: var(--chip-granny); color: #9a7d0a; }
+.selected-person[data-person="custom"] { background: var(--chip-custom); color: #196f3d; }
 
 /* Repeat Section */
 .repeat-section {
@@ -599,16 +591,6 @@ body {
     box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
 }
 
-.secondary-btn {
-    background: var(--bg-light);
-    color: var(--primary-color);
-    border: 2px solid var(--primary-color);
-}
-
-.secondary-btn:hover {
-    background: var(--primary-pale);
-}
-
 /* Footer */
 footer {
     background: var(--bg-light);
@@ -740,17 +722,50 @@ footer {
     margin: 0;
 }
 
-/* Mobile Responsive */
-@media (max-width: 900px) {
-    .calendar-wrapper {
-        padding: 0.75rem;
-    }
-    
-    .calendar-grid {
-        min-width: 600px;
-    }
+/* Mobile Calendar */
+.mobile-calendar {
+    display: none;
 }
 
+.mobile-day-card {
+    background: var(--bg-white);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.mobile-day-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.mobile-time-slot {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-time-slot:last-child {
+    border-bottom: none;
+}
+
+.mobile-time-label {
+    font-size: 0.8rem;
+    color: var(--primary-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.mobile-slot-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* Mobile Responsive */
 @media (max-width: 768px) {
     /* Mobile Navigation */
     .mobile-menu-toggle {
@@ -814,32 +829,13 @@ footer {
         font-size: 0.8rem;
     }
     
-    /* People Pool */
-    .people-pool {
-        padding: 1rem;
-    }
-    
-    .people-pool h3 {
-        font-size: 1rem;
-    }
-    
-    .person-chip {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.85rem;
-    }
-    
-    /* Calendar - Switch to card view on mobile */
+    /* Hide desktop calendar, show mobile */
     .calendar-wrapper {
-        padding: 0.5rem;
-        overflow-x: visible;
-    }
-    
-    .calendar-grid {
         display: none;
     }
     
     .mobile-calendar {
-        display: block !important;
+        display: block;
     }
     
     /* Repeat Section */
@@ -869,98 +865,33 @@ footer {
         min-width: auto;
     }
     
+    /* Add custom form */
+    .add-custom-form {
+        flex-direction: column;
+    }
+    
     /* Modal */
     .modal {
         padding: 1.5rem;
     }
 }
 
-/* Mobile Calendar Card View */
-.mobile-calendar {
-    display: none;
-}
-
-.mobile-day-card {
-    background: var(--bg-white);
-    border-radius: 10px;
-    margin-bottom: 1rem;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-}
-
-.mobile-day-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    color: white;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.mobile-time-slot {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-height: 70px;
-}
-
-.mobile-time-slot:last-child {
-    border-bottom: none;
-}
-
-.mobile-time-label {
-    font-size: 0.8rem;
-    color: var(--primary-dark);
-    font-weight: 600;
-}
-
-.mobile-slot-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    min-height: 35px;
-    padding: 0.25rem;
-    border-radius: 8px;
-    background: var(--bg-light);
-}
-
-.mobile-slot-content.drag-over {
-    background: #d4efdf;
-    border: 2px dashed var(--success-color);
-}
-
-/* Touch-friendly improvements */
-@media (hover: none) and (pointer: coarse) {
-    .person-chip {
-        padding: 0.75rem 1.2rem;
-    }
-    
-    .slot-chip {
-        padding: 0.5rem 0.8rem;
-    }
-    
-    .slot-chip .remove-chip {
-        width: 24px;
-        height: 24px;
-        font-size: 0.8rem;
-    }
-    
-    .btn {
-        padding: 1rem 1.5rem;
-    }
-}
-
 /* Print Styles for PDF */
 @media print {
     .main-nav,
-    .people-pool,
+    .custom-people-section,
     .repeat-section,
     .email-section,
     footer,
     .week-tabs-container,
-    .modal-overlay {
+    .modal-overlay,
+    .mobile-calendar,
+    .person-select {
         display: none !important;
+    }
+    
+    .calendar-wrapper {
+        display: block !important;
     }
     
     .container {
@@ -976,5 +907,8 @@ footer {
     body {
         background: white;
     }
+    
+    .selected-person .remove-person {
+        display: none;
+    }
 }
-

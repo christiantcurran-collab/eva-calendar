@@ -3,7 +3,7 @@
 
 // Configuration
 const CONFIG = {
-    startDate: new Date(2025, 0, 13), // Monday 13th Jan 2025 (closest Monday after 12th Jan)
+    startDate: new Date(2025, 0, 13), // Monday 13th Jan 2025
     timeSlots: [
         { id: 'morning', label: '6-9am' },
         { id: 'midday', label: '9am-1pm' },
@@ -11,14 +11,9 @@ const CONFIG = {
         { id: 'evening', label: '5-8pm' }
     ],
     days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    defaultPeople: ['Mum', 'Dad', 'Megan', 'EDS', 'Lisa', 'Granny'],
     defaultEmail: 'ccurran@gmail.com',
-    numberOfWeeks: 12,
-    // EmailJS Configuration - You'll need to set these up at https://www.emailjs.com/
-    emailjs: {
-        serviceId: 'service_eva_calendar', // Create this in EmailJS
-        templateId: 'template_weekly_plan', // Create this in EmailJS
-        publicKey: 'YOUR_EMAILJS_PUBLIC_KEY' // Get this from EmailJS dashboard
-    }
+    numberOfWeeks: 12
 };
 
 // State
@@ -35,10 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWeekTabs();
     renderCalendar();
     renderMobileCalendar();
-    setupDragAndDrop();
+    renderCustomPeopleList();
     setupEventListeners();
     setupMobileNavigation();
-    checkScheduledEmails();
 });
 
 // Load state from localStorage
@@ -57,8 +51,6 @@ function loadState() {
 // Save state to localStorage and sync with backend
 function saveState() {
     localStorage.setItem('evaCalendarState', JSON.stringify(state));
-    
-    // Sync with backend (for scheduled emails)
     syncWithBackend();
 }
 
@@ -72,7 +64,7 @@ async function syncWithBackend() {
         });
     } catch (error) {
         // Backend might not be available (e.g., running locally)
-        console.log('Backend sync skipped (not available)');
+        console.log('Backend sync skipped');
     }
 }
 
@@ -119,6 +111,11 @@ function formatDate(date) {
     return `${day} ${month}`;
 }
 
+// Get all available people (default + custom)
+function getAllPeople() {
+    return [...CONFIG.defaultPeople, ...state.customPeople];
+}
+
 // Render week tabs
 function renderWeekTabs() {
     const tabsContainer = document.getElementById('weekTabs');
@@ -158,7 +155,7 @@ function selectWeek(weekIndex) {
     renderMobileCalendar();
 }
 
-// Render calendar grid
+// Render calendar grid (desktop)
 function renderCalendar() {
     const tbody = document.getElementById('calendarBody');
     tbody.innerHTML = '';
@@ -189,8 +186,6 @@ function renderCalendar() {
         CONFIG.days.forEach(day => {
             const cell = document.createElement('td');
             cell.className = 'calendar-slot';
-            cell.dataset.day = day;
-            cell.dataset.slot = slot.id;
             
             const content = document.createElement('div');
             content.className = 'slot-content';
@@ -198,8 +193,11 @@ function renderCalendar() {
             // Render existing people in slot
             const people = weekData[day]?.[slot.id] || [];
             people.forEach((person, index) => {
-                content.appendChild(createSlotChip(person, day, slot.id, index));
+                content.appendChild(createPersonChip(person, day, slot.id, index));
             });
+            
+            // Add dropdown to add more people
+            content.appendChild(createPersonSelect(day, slot.id));
             
             cell.appendChild(content);
             row.appendChild(cell);
@@ -209,58 +207,64 @@ function renderCalendar() {
     });
 }
 
-// Create a chip for a slot
-function createSlotChip(person, day, slotId, index) {
+// Create a person chip (for display in slot)
+function createPersonChip(person, day, slotId, index) {
     const chip = document.createElement('div');
-    chip.className = 'slot-chip';
+    chip.className = 'selected-person';
     chip.dataset.person = isDefaultPerson(person) ? person : 'custom';
-    chip.draggable = true;
+    
     chip.innerHTML = `
-        <span>${person}</span>
-        <button class="remove-chip" data-day="${day}" data-slot="${slotId}" data-index="${index}">
+        <span class="person-name">${person}</span>
+        <button class="remove-person" title="Remove">
             <i class="fas fa-times"></i>
         </button>
     `;
     
-    // Remove button handler
-    chip.querySelector('.remove-chip').addEventListener('click', (e) => {
-        e.stopPropagation();
+    chip.querySelector('.remove-person').addEventListener('click', () => {
         removePersonFromSlot(day, slotId, index);
-    });
-    
-    // Drag handlers for moving between slots
-    chip.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify({
-            person,
-            sourceDay: day,
-            sourceSlot: slotId,
-            sourceIndex: index
-        }));
-        chip.classList.add('dragging');
-    });
-    
-    chip.addEventListener('dragend', () => {
-        chip.classList.remove('dragging');
     });
     
     return chip;
 }
 
-// Check if person is a default one
-function isDefaultPerson(person) {
-    return ['Mum', 'Dad', 'Megan', 'EDS', 'Lisa', 'Granny'].includes(person);
+// Create person select dropdown
+function createPersonSelect(day, slotId) {
+    const select = document.createElement('select');
+    select.className = 'person-select';
+    
+    // Default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '+ Add person...';
+    select.appendChild(defaultOption);
+    
+    // Add all available people as options
+    getAllPeople().forEach(person => {
+        const option = document.createElement('option');
+        option.value = person;
+        option.textContent = person;
+        select.appendChild(option);
+    });
+    
+    // Handle selection
+    select.addEventListener('change', (e) => {
+        if (e.target.value) {
+            addPersonToSlot(day, slotId, e.target.value);
+            e.target.value = ''; // Reset dropdown
+        }
+    });
+    
+    return select;
 }
 
-// Render mobile calendar
+// Check if person is a default one
+function isDefaultPerson(person) {
+    return CONFIG.defaultPeople.includes(person);
+}
+
+// Render mobile calendar (card view)
 function renderMobileCalendar() {
-    let mobileCalendar = document.querySelector('.mobile-calendar');
-    
-    if (!mobileCalendar) {
-        mobileCalendar = document.createElement('div');
-        mobileCalendar.className = 'mobile-calendar';
-        document.querySelector('.calendar-wrapper').appendChild(mobileCalendar);
-    }
-    
+    const mobileCalendar = document.getElementById('mobileCalendar');
     mobileCalendar.innerHTML = '';
     
     const weekKey = getWeekKey(state.currentWeekIndex);
@@ -290,13 +294,15 @@ function renderMobileCalendar() {
             
             const content = document.createElement('div');
             content.className = 'mobile-slot-content';
-            content.dataset.day = day;
-            content.dataset.slot = slot.id;
             
+            // Render existing people
             const people = weekData[day]?.[slot.id] || [];
             people.forEach((person, index) => {
-                content.appendChild(createSlotChip(person, day, slot.id, index));
+                content.appendChild(createPersonChip(person, day, slot.id, index));
             });
+            
+            // Add dropdown
+            content.appendChild(createPersonSelect(day, slot.id));
             
             timeSlot.appendChild(content);
             dayCard.appendChild(timeSlot);
@@ -304,170 +310,29 @@ function renderMobileCalendar() {
         
         mobileCalendar.appendChild(dayCard);
     });
-    
-    // Setup drag and drop for mobile slots
-    setupMobileSlotDropZones();
 }
 
-// Setup mobile slot drop zones
-function setupMobileSlotDropZones() {
-    const mobileSlots = document.querySelectorAll('.mobile-slot-content');
+// Render custom people list
+function renderCustomPeopleList() {
+    const list = document.getElementById('customPeopleList');
+    list.innerHTML = '';
     
-    mobileSlots.forEach(slot => {
-        slot.addEventListener('dragover', handleDragOver);
-        slot.addEventListener('dragleave', handleDragLeave);
-        slot.addEventListener('drop', handleDrop);
+    state.customPeople.forEach((person, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'custom-chip';
+        chip.innerHTML = `
+            <span>${person}</span>
+            <button class="remove-custom" title="Remove">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        chip.querySelector('.remove-custom').addEventListener('click', () => {
+            removeCustomPerson(index);
+        });
+        
+        list.appendChild(chip);
     });
-}
-
-// Setup drag and drop
-function setupDragAndDrop() {
-    // People chips
-    const personChips = document.querySelectorAll('.person-chip:not(.custom-chip)');
-    personChips.forEach(chip => {
-        chip.addEventListener('dragstart', handlePersonDragStart);
-        chip.addEventListener('dragend', handleDragEnd);
-        
-        // Touch support
-        chip.addEventListener('touchstart', handleTouchStart, { passive: false });
-        chip.addEventListener('touchmove', handleTouchMove, { passive: false });
-        chip.addEventListener('touchend', handleTouchEnd);
-    });
-    
-    // Calendar slots
-    const slots = document.querySelectorAll('.calendar-slot');
-    slots.forEach(slot => {
-        slot.addEventListener('dragover', handleDragOver);
-        slot.addEventListener('dragleave', handleDragLeave);
-        slot.addEventListener('drop', handleDrop);
-    });
-}
-
-// Drag handlers
-function handlePersonDragStart(e) {
-    const person = e.target.closest('.person-chip').dataset.person;
-    e.dataTransfer.setData('text/plain', JSON.stringify({ person }));
-    e.target.classList.add('dragging');
-}
-
-function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-}
-
-function handleDragOver(e) {
-    e.preventDefault();
-    const dropZone = e.target.closest('.calendar-slot, .mobile-slot-content');
-    if (dropZone) {
-        dropZone.classList.add('drag-over');
-    }
-}
-
-function handleDragLeave(e) {
-    const dropZone = e.target.closest('.calendar-slot, .mobile-slot-content');
-    if (dropZone) {
-        dropZone.classList.remove('drag-over');
-    }
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    const dropZone = e.target.closest('.calendar-slot, .mobile-slot-content, .slot-content');
-    if (!dropZone) return;
-    
-    dropZone.classList.remove('drag-over');
-    
-    const slot = dropZone.closest('.calendar-slot, .mobile-slot-content') || dropZone;
-    const day = slot.dataset.day;
-    const slotId = slot.dataset.slot;
-    
-    if (!day || !slotId) return;
-    
-    try {
-        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-        
-        // If moving from another slot, remove from source first
-        if (data.sourceDay && data.sourceSlot !== undefined) {
-            removePersonFromSlot(data.sourceDay, data.sourceSlot, data.sourceIndex, false);
-        }
-        
-        addPersonToSlot(day, slotId, data.person);
-    } catch (err) {
-        console.error('Drop error:', err);
-    }
-}
-
-// Touch handlers for mobile drag and drop
-let touchDragElement = null;
-let touchStartX = 0;
-let touchStartY = 0;
-
-function handleTouchStart(e) {
-    const chip = e.target.closest('.person-chip');
-    if (!chip || chip.classList.contains('custom-chip')) return;
-    
-    touchDragElement = chip.cloneNode(true);
-    touchDragElement.style.position = 'fixed';
-    touchDragElement.style.zIndex = '10000';
-    touchDragElement.style.opacity = '0.9';
-    touchDragElement.style.pointerEvents = 'none';
-    touchDragElement.style.transform = 'scale(1.1)';
-    
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    
-    touchDragElement.style.left = (touch.clientX - 50) + 'px';
-    touchDragElement.style.top = (touch.clientY - 25) + 'px';
-    
-    document.body.appendChild(touchDragElement);
-    chip.classList.add('dragging');
-}
-
-function handleTouchMove(e) {
-    if (!touchDragElement) return;
-    e.preventDefault();
-    
-    const touch = e.touches[0];
-    touchDragElement.style.left = (touch.clientX - 50) + 'px';
-    touchDragElement.style.top = (touch.clientY - 25) + 'px';
-    
-    // Highlight drop zone
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    
-    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    const dropZone = elemBelow?.closest('.calendar-slot, .mobile-slot-content');
-    if (dropZone) {
-        dropZone.classList.add('drag-over');
-    }
-}
-
-function handleTouchEnd(e) {
-    if (!touchDragElement) return;
-    
-    const chip = document.querySelector('.person-chip.dragging');
-    if (chip) chip.classList.remove('dragging');
-    
-    const touch = e.changedTouches[0];
-    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    const dropZone = elemBelow?.closest('.calendar-slot, .mobile-slot-content');
-    
-    if (dropZone) {
-        const day = dropZone.dataset.day;
-        const slotId = dropZone.dataset.slot;
-        const person = chip?.dataset.person;
-        
-        if (day && slotId && person) {
-            addPersonToSlot(day, slotId, person);
-        }
-    }
-    
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    
-    if (touchDragElement.parentNode) {
-        touchDragElement.parentNode.removeChild(touchDragElement);
-    }
-    touchDragElement = null;
 }
 
 // Add person to slot
@@ -493,18 +358,62 @@ function addPersonToSlot(day, slotId, person) {
 }
 
 // Remove person from slot
-function removePersonFromSlot(day, slotId, index, shouldRender = true) {
+function removePersonFromSlot(day, slotId, index) {
     const weekKey = getWeekKey(state.currentWeekIndex);
     
     if (state.weeks[weekKey]?.[day]?.[slotId]) {
         state.weeks[weekKey][day][slotId].splice(index, 1);
         saveState();
-        
-        if (shouldRender) {
-            renderCalendar();
-            renderMobileCalendar();
+        renderCalendar();
+        renderMobileCalendar();
+    }
+}
+
+// Add custom person
+function addCustomPerson() {
+    const input = document.getElementById('customInput');
+    const name = input.value.trim();
+    
+    if (name && !state.customPeople.includes(name) && !CONFIG.defaultPeople.includes(name)) {
+        state.customPeople.push(name);
+        saveState();
+        renderCustomPeopleList();
+        renderCalendar();
+        renderMobileCalendar();
+        input.value = '';
+    }
+}
+
+// Remove custom person
+function removeCustomPerson(index) {
+    state.customPeople.splice(index, 1);
+    saveState();
+    renderCustomPeopleList();
+    renderCalendar();
+    renderMobileCalendar();
+}
+
+// Repeat week to following weeks
+function repeatWeek() {
+    const numWeeks = parseInt(document.getElementById('repeatWeeks').value) || 4;
+    const sourceWeekKey = getWeekKey(state.currentWeekIndex);
+    const sourceWeekData = state.weeks[sourceWeekKey];
+    
+    if (!sourceWeekData) {
+        alert('Current week has no data to copy.');
+        return;
+    }
+    
+    for (let i = 1; i <= numWeeks; i++) {
+        const targetWeekIndex = state.currentWeekIndex + i;
+        if (targetWeekIndex < CONFIG.numberOfWeeks) {
+            const targetWeekKey = getWeekKey(targetWeekIndex);
+            state.weeks[targetWeekKey] = JSON.parse(JSON.stringify(sourceWeekData));
         }
     }
+    
+    saveState();
+    alert(`Week copied to the following ${numWeeks} week(s)!`);
 }
 
 // Setup event listeners
@@ -534,15 +443,11 @@ function setupEventListeners() {
         document.getElementById('emailModal').classList.add('active');
     });
     
-    document.getElementById('closeEmailModal').addEventListener('click', () => {
-        document.getElementById('emailModal').classList.remove('active');
-        document.getElementById('emailSuccess').style.display = 'none';
-        document.getElementById('emailForm').style.display = 'flex';
-    });
+    document.getElementById('closeEmailModal').addEventListener('click', closeEmailModal);
     
     document.getElementById('emailModal').addEventListener('click', (e) => {
         if (e.target.id === 'emailModal') {
-            document.getElementById('emailModal').classList.remove('active');
+            closeEmailModal();
         }
     });
     
@@ -559,60 +464,11 @@ function setupEventListeners() {
     document.getElementById('downloadPdfBtn').addEventListener('click', generatePDF);
 }
 
-// Add custom person
-function addCustomPerson() {
-    const input = document.getElementById('customInput');
-    const name = input.value.trim();
-    
-    if (name) {
-        state.customPeople.push(name);
-        saveState();
-        
-        // Add a new chip
-        const chipsContainer = document.getElementById('peopleChips');
-        const customChip = document.getElementById('customChip');
-        
-        const newChip = document.createElement('div');
-        newChip.className = 'person-chip';
-        newChip.draggable = true;
-        newChip.dataset.person = name;
-        newChip.style.background = 'var(--chip-custom)';
-        newChip.style.color = '#196f3d';
-        newChip.innerHTML = `<span class="chip-text">${name}</span>`;
-        
-        // Add drag handlers
-        newChip.addEventListener('dragstart', handlePersonDragStart);
-        newChip.addEventListener('dragend', handleDragEnd);
-        newChip.addEventListener('touchstart', handleTouchStart, { passive: false });
-        newChip.addEventListener('touchmove', handleTouchMove, { passive: false });
-        newChip.addEventListener('touchend', handleTouchEnd);
-        
-        chipsContainer.insertBefore(newChip, customChip);
-        input.value = '';
-    }
-}
-
-// Repeat week to following weeks
-function repeatWeek() {
-    const numWeeks = parseInt(document.getElementById('repeatWeeks').value) || 4;
-    const sourceWeekKey = getWeekKey(state.currentWeekIndex);
-    const sourceWeekData = state.weeks[sourceWeekKey];
-    
-    if (!sourceWeekData) {
-        alert('Current week has no data to copy.');
-        return;
-    }
-    
-    for (let i = 1; i <= numWeeks; i++) {
-        const targetWeekIndex = state.currentWeekIndex + i;
-        if (targetWeekIndex < CONFIG.numberOfWeeks) {
-            const targetWeekKey = getWeekKey(targetWeekIndex);
-            state.weeks[targetWeekKey] = JSON.parse(JSON.stringify(sourceWeekData));
-        }
-    }
-    
-    saveState();
-    alert(`Week copied to the following ${numWeeks} week(s)!`);
+// Close email modal
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('active');
+    document.getElementById('emailSuccess').style.display = 'none';
+    document.getElementById('emailForm').style.display = 'flex';
 }
 
 // Setup mobile navigation
@@ -625,7 +481,6 @@ function setupMobileNavigation() {
         menu.classList.toggle('active');
     });
     
-    // Close menu when clicking a link
     menu.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', () => {
             toggle.classList.remove('active');
@@ -644,11 +499,7 @@ function handleEmailSubmit(e) {
         document.getElementById('emailForm').style.display = 'none';
         document.getElementById('emailSuccess').style.display = 'block';
         
-        setTimeout(() => {
-            document.getElementById('emailModal').classList.remove('active');
-            document.getElementById('emailSuccess').style.display = 'none';
-            document.getElementById('emailForm').style.display = 'flex';
-        }, 2000);
+        setTimeout(closeEmailModal, 2000);
     }
 }
 
@@ -660,10 +511,9 @@ async function sendCalendarEmail(recipientEmail) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
     
-    // Generate email content
     const emailContent = generateEmailContent(weekData, weekStart, weekEnd);
     
-    // Try to send via backend API first
+    // Try backend API first
     try {
         const response = await fetch('/api/send-email', {
             method: 'POST',
@@ -681,39 +531,16 @@ async function sendCalendarEmail(recipientEmail) {
             return true;
         }
     } catch (error) {
-        console.log('Backend email failed, trying EmailJS...');
+        console.log('Backend email failed, using mailto...');
     }
     
-    // Try EmailJS as fallback
-    if (typeof emailjs !== 'undefined' && CONFIG.emailjs.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') {
-        try {
-            emailjs.init(CONFIG.emailjs.publicKey);
-            
-            await emailjs.send(CONFIG.emailjs.serviceId, CONFIG.emailjs.templateId, {
-                to_email: recipientEmail,
-                from_name: "Eva's Calendar",
-                subject: `Eva's Calendar: Week of ${formatDate(weekStart)}`,
-                message_html: emailContent.html,
-                message: emailContent.text
-            });
-            
-            console.log('Email sent via EmailJS');
-            return true;
-        } catch (error) {
-            console.error('EmailJS error:', error);
-        }
-    }
-    
-    // Fallback to mailto link
+    // Fallback to mailto
     const subject = encodeURIComponent(`Eva's Calendar: Week of ${formatDate(weekStart)}`);
     const body = encodeURIComponent(emailContent.text);
-    const mailtoLink = `mailto:${recipientEmail}?subject=${subject}&body=${body}`;
-    
-    window.location.href = mailtoLink;
-    return true;
+    window.location.href = `mailto:${recipientEmail}?subject=${subject}&body=${body}`;
 }
 
-// Generate email content (HTML and plain text)
+// Generate email content
 function generateEmailContent(weekData, weekStart, weekEnd) {
     let text = `Eva's Weekly Calendar\n`;
     text += `Week of ${formatDate(weekStart)} - ${formatDate(weekEnd)}\n\n`;
@@ -766,7 +593,6 @@ function generateEmailContent(weekData, weekStart, weekEnd) {
 
 // Generate PDF
 function generatePDF() {
-    // Create a printable version
     const printWindow = window.open('', '_blank');
     const weekStart = getWeekStartDate(state.currentWeekIndex);
     const weekEnd = new Date(weekStart);
@@ -775,37 +601,7 @@ function generatePDF() {
     const weekKey = getWeekKey(state.currentWeekIndex);
     const weekData = state.weeks[weekKey] || createEmptyWeek();
     
-    let tableHTML = `
-        <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
-            <thead>
-                <tr style="background: #3498db; color: white;">
-                    <th style="padding: 12px; border: 1px solid #2980b9;">Time</th>
-    `;
-    
-    CONFIG.days.forEach((day, i) => {
-        const date = new Date(weekStart);
-        date.setDate(date.getDate() + i);
-        tableHTML += `<th style="padding: 12px; border: 1px solid #2980b9;">${day}<br><small>${formatDate(date)}</small></th>`;
-    });
-    
-    tableHTML += '</tr></thead><tbody>';
-    
-    CONFIG.timeSlots.forEach(slot => {
-        tableHTML += `<tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background: #ebf5fb; font-weight: bold; text-align: center;">${slot.label}</td>
-        `;
-        
-        CONFIG.days.forEach(day => {
-            const people = weekData[day]?.[slot.id] || [];
-            tableHTML += `<td style="padding: 10px; border: 1px solid #ddd; vertical-align: top; min-height: 60px;">
-                ${people.map(p => `<span style="display: inline-block; background: #85c1e9; padding: 4px 10px; border-radius: 15px; margin: 2px; font-size: 12px;">${p}</span>`).join('')}
-            </td>`;
-        });
-        
-        tableHTML += '</tr>';
-    });
-    
-    tableHTML += '</tbody></table>';
+    const { html } = generateEmailContent(weekData, weekStart, weekEnd);
     
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -813,32 +609,12 @@ function generatePDF() {
         <head>
             <title>Eva's Calendar - Week of ${formatDate(weekStart)}</title>
             <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    padding: 20px;
-                    max-width: 1100px;
-                    margin: 0 auto;
-                }
-                h1 { 
-                    color: #3498db; 
-                    text-align: center;
-                    margin-bottom: 5px;
-                }
-                h2 {
-                    color: #666;
-                    text-align: center;
-                    font-weight: normal;
-                    margin-top: 0;
-                }
-                @media print {
-                    body { padding: 0; }
-                }
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                @media print { body { padding: 0; } }
             </style>
         </head>
         <body>
-            <h1>Eva's Weekly Calendar</h1>
-            <h2>Week of ${formatDate(weekStart)} - ${formatDate(weekEnd)}</h2>
-            ${tableHTML}
+            ${html}
             <p style="text-align: center; color: #999; margin-top: 20px; font-size: 12px;">
                 Generated on ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}
             </p>
@@ -847,59 +623,5 @@ function generatePDF() {
     `);
     
     printWindow.document.close();
-    
-    // Trigger print dialog after a short delay
-    setTimeout(() => {
-        printWindow.print();
-    }, 500);
+    setTimeout(() => printWindow.print(), 500);
 }
-
-// Check for scheduled emails (informational only - actual scheduling would need a backend)
-function checkScheduledEmails() {
-    // This function provides information about when emails would be sent
-    // Actual email scheduling requires a backend service
-    
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const hours = now.getHours();
-    
-    // Saturday at 9am - Send proposed plan
-    if (dayOfWeek === 6 && hours === 9) {
-        console.log('Saturday 9am - Proposed plan email time');
-        // In a real implementation, this would trigger an API call
-    }
-    
-    // Sunday at 12pm - Send PDF
-    if (dayOfWeek === 0 && hours === 12) {
-        console.log('Sunday 12pm - PDF email time');
-        // In a real implementation, this would trigger an API call
-    }
-}
-
-// Restore custom people chips on load
-function restoreCustomPeople() {
-    state.customPeople.forEach(name => {
-        const chipsContainer = document.getElementById('peopleChips');
-        const customChip = document.getElementById('customChip');
-        
-        const newChip = document.createElement('div');
-        newChip.className = 'person-chip';
-        newChip.draggable = true;
-        newChip.dataset.person = name;
-        newChip.style.background = 'var(--chip-custom)';
-        newChip.style.color = '#196f3d';
-        newChip.innerHTML = `<span class="chip-text">${name}</span>`;
-        
-        newChip.addEventListener('dragstart', handlePersonDragStart);
-        newChip.addEventListener('dragend', handleDragEnd);
-        newChip.addEventListener('touchstart', handleTouchStart, { passive: false });
-        newChip.addEventListener('touchmove', handleTouchMove, { passive: false });
-        newChip.addEventListener('touchend', handleTouchEnd);
-        
-        chipsContainer.insertBefore(newChip, customChip);
-    });
-}
-
-// Call restore on load
-document.addEventListener('DOMContentLoaded', restoreCustomPeople);
-
